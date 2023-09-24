@@ -551,19 +551,19 @@ void MyBugAlgorithm::follow(const amp::Problem2D& problem, float current_x, floa
             //std::cout << "I have set the vertices that I now want to follow to " << info[2] << " and "<<info[3] << "\n";
         }
         else{
-            //std::cout<<"fuck 1 \n";
+            //std::cout<<" 1 \n";
             info[2] = 3;
             info[3] = 0;
         }
     }
     else if (info[2] == 3){
         if(dy < 0){
-            //std::cout<<"fuck 2 \n";
+            //std::cout<<" 2 \n";
             info[2] = 0;
             info[3] = 1;
         }
         else{
-            //std::cout<<"fuck 3 \n";
+            //std::cout<<" 3 \n";
             info[2] = 2;
             info[3] = 3;
         }
@@ -768,19 +768,19 @@ void MyBugAlgorithm::follow_bug1(const amp::Problem2D& problem, float current_x,
                     //std::cout << "I have set the vertices that I now want to follow to " << info[2] << " and "<<info[3] << "\n";
                 }
                 else{
-                    //std::cout<<"fuck 1 \n";
+                    //std::cout<<" 1 \n";
                     info[2] = 3;
                     info[3] = 0;
                 }
             }
             else if (info[2] == 3){
                 if(dy < 0){
-                    //std::cout<<"fuck 2 \n";
+                    //std::cout<<" 2 \n";
                     info[2] = 0;
                     info[3] = 1;
                 }
                 else{
-                    //std::cout<<"fuck 3 \n";
+                    //std::cout<<" 3 \n";
                     info[2] = 2;
                     info[3] = 3;
                 }
@@ -866,19 +866,19 @@ void MyBugAlgorithm::follow_bug1(const amp::Problem2D& problem, float current_x,
             //std::cout << "I have set the vertices that I now want to follow to " << info[2] << " and "<<info[3] << "\n";
         }
         else{
-            //std::cout<<"fuck 1 \n";
+            //std::cout<<" 1 \n";
             info[2] = 3;
             info[3] = 0;
         }
     }
     else if (info[2] == 3){
         if(dy < 0){
-            //std::cout<<"fuck 2 \n";
+            //std::cout<<" 2 \n";
             info[2] = 0;
             info[3] = 1;
         }
         else{
-            //std::cout<<"fuck 3 \n";
+            //std::cout<<" 3 \n";
             info[2] = 2;
             info[3] = 3;
         }
