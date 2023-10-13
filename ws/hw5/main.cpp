@@ -36,7 +36,7 @@ class MyGDAlgo : public amp::GDAlgorithm{
         std::vector<double> goal_vec = {problem.q_goal[0], problem.q_goal[1]};
 
         //while((abs(gradient) > epsilon && dist_to_goal > epsilon) && iter < iter_max){
-        while(dist_to_goal > epsilon && iter < iter_max){
+        while((dist_to_goal > d_star || gradient > epsilon)  && iter < iter_max){
             std::vector<double> current_point = {};
             std::vector<std::vector<double>> rep = {{}};
             std::vector<double> att = {};
