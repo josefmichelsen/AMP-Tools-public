@@ -379,7 +379,9 @@ class grader_class : public GridCSpace2DConstructor{
 
     std::unique_ptr<amp::GridCSpace2D> construct(const amp::LinkManipulator2D& manipulator, const amp::Environment2D& env){
 
-        config get_col_c_space( 360, 360, 0.0, 360.0, 0.0, 360.0);
+        std::size_t x0 = 360;
+        std::size_t x1 = 360;
+        config get_col_c_space( x0, x1, 0.0, 360.0, 0.0, 360.0);
         get_col_c_space.env = env;
         get_col_c_space.link_lengths = manipulator.getLinkLengths();
 
@@ -443,29 +445,30 @@ int main(int argc, char** argv) {
         c_space_polygons.push_back(c_obst);
     }
     
-    Visualizer first;
-    first.makeFigure(c_space_polygons, thetas);
-    first.showFigures();
+    // Visualizer first;
+    // first.makeFigure(c_space_polygons, thetas);
+    // first.showFigures();
 
 
-    const std::vector<double> link_lengths = {8,8,9};
-    //const ManipulatorState thetas = {45.0,90.0,23.6};
+    const std::vector<double> link_lengths = {1.0,0.5,1.0};
     uint32_t joint_index = 2;
     const link_solver link_robot(link_lengths);
+    Eigen::Vector2d end(2.0,0.0);
     //Eigen::Vector2d sol = link_robot.getJointLocation(thetas, joint_index);
+    ManipulatorState sol = link_robot.getConfigurationFromIK(end);
     
     
-    //const amp::ManipulatorState thetas2 = {3.141592653589793238463/2,3.141592653589793238463/2,3.141592653589793238463/2};
+    //const amp::ManipulatorState thetas2 = {3.141592653589793238463/6,3.141592653589793238463/3,7*3.141592653589793238463/4};
     //const std::vector<double> thetas2 = {90.0,90.0,90.0};
     // Visualizer link_vis;
-    // link_vis.makeFigure(link_robot, thetas2);
+    // link_vis.makeFigure(link_robot, sol);
     // link_vis.showFigures();
 
     //std::cout << "position from new function x " << sol[0] << " y " << sol[1] << "\n";
 
     const Eigen::Vector2d end_effector_location(0.0,4.0);
 
-    ManipulatorState test2 =  link_robot.getConfigurationFromIK(end_effector_location);
+    //ManipulatorState test2 =  link_robot.getConfigurationFromIK(end_effector_location);
 
     // std::vector<Eigen::Vector2d> o1 = {{-0.25,1.1},{-0.25,2},{0.25,2},{0.25,1.1}};
     // std::vector<Eigen::Vector2d> o2 = {{-2.0,-2.0},{-2.0,-1.8},{2.0,-1.8},{2.0,-2.0}};
@@ -526,7 +529,7 @@ int main(int argc, char** argv) {
 
     }
 
-    bool testing_hit = problem_3_b.inCollision(270.0,270.0);
+    //bool testing_hit = problem_3_b.inCollision(270.0,270.0);
    //std::cout << testing_hit << "\n";
 
     // Visualizer plots;
@@ -561,13 +564,7 @@ int main(int argc, char** argv) {
     // Obstacle2D obs1_grade(o1_grade);
     // Obstacle2D obs2_grade(o2_grade);
     // std::vector<Obstacle2D> obs_to_pass_grade = {obs1_grade,obs2_grade};
-    
-    // const link_solver link_robot_grade;
-    // const amp::LinkManipulator2D *this_is_so_frustrating;
-    // this_is_so_frustrating = &link_robot_grade;
-    // amp::Environment2D env_grade;
-    // env_grade.obstacles = obs_to_pass_grade;
-    // Grade method
+
 
     // GridCSpace2DConstructor grade
     // config grade(lower_bound_c_space_1st_dim, upper_bound_c_space_1st_dim, lower_bound_c_space_2st_dim, upper_bound_c_space_2st_dim, x_config_size, y_config_size);
