@@ -27,7 +27,8 @@ class MyGDAlgo : public amp::GDAlgorithm{
     amp::Path2D path;
     
     virtual amp::Path2D plan(const amp::Problem2D& problem) override{
-        
+        amp::Path2D path_reset;
+        path = path_reset;
         path.waypoints.push_back(problem.q_init);
         int iter = 0;
         double dist_to_goal = dist_between_two_points(path.waypoints.back()[0], path.waypoints.back()[1], problem.q_goal[0], problem.q_goal[1]);
@@ -106,8 +107,8 @@ class MyGDAlgo : public amp::GDAlgorithm{
 
 int main(int argc, char** argv) {    
     // workspaces fro hw2, to use these needed to include the #include "hw/HW2.h" line
-    Problem2D hw5_environtment = HW2::getWorkspace1();    
-    //Problem2D hw5_environtment = HW2::getWorkspace2();
+    //Problem2D hw5_environtment = HW2::getWorkspace1();    
+    Problem2D hw5_environtment = HW2::getWorkspace2();
 
     //workspace from specifically hw5
     // std::vector<Eigen::Vector2d> o1 = {{3.5,0.5},{4.5,0.5},{4.5,1.5},{3.5,1.5}};
@@ -128,6 +129,10 @@ int main(int argc, char** argv) {
     hw5_environtment.x_max = 40.0;
     hw5_environtment.y_min = -10.0;
     hw5_environtment.y_max = 20.0;
+    // hw5_environtment.x_min = -5.0;
+    // hw5_environtment.x_max = 15.0;
+    // hw5_environtment.y_min = -10.0;
+    // hw5_environtment.y_max = 10.0;
 
     MyGDAlgo solver;
 
@@ -149,7 +154,13 @@ int main(int argc, char** argv) {
     amp::HW5 grade;
     bool did_i_pass = grade.check(final_path,hw5_environtment,true);
     std::cout << "did you pass? " << did_i_pass << "\n"; 
+    
+    amp::GDAlgorithm* new_point;
 
+    new_point = &solver;
+
+    int final_grade = amp::HW5::grade(*new_point, "jomi7243@colorado.edu", argc, argv);
+    //std::cout << "final grade is " << final_grade << "\n";
     return 0;
 }
 
