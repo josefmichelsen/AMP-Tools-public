@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
     solver.att_force_weight = 1.1;//scaling factor for attractive force
     solver.d_star = 1.0; //threshold distance from goal to change how we calculate attractive force
     solver.nu = 1.2; //gain on repulsive gradient
-    solver.q_star = 0.2;//distance at which point we start considering obstacles repulsive force
+    solver.q_star = 0.198;//distance at which point we start considering obstacles repulsive force
     solver.iter_max = 10000;
 
     amp::Path2D final_path = solver.plan(hw5_environtment);
@@ -159,7 +159,7 @@ int main(int argc, char** argv) {
 
     new_point = &solver;
 
-    int final_grade = amp::HW5::grade(*new_point, "jomi7243@colorado.edu", argc, argv);
+    //int final_grade = amp::HW5::grade(*new_point, "jomi7243@colorado.edu", argc, argv);
     //std::cout << "final grade is " << final_grade << "\n";
     return 0;
 }

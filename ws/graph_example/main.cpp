@@ -13,6 +13,10 @@ int main() {
     graph.connect(6, 2, "you");
     graph.connect(6, 1, "believe me");
 
+    amp::Graph<int> graph2;
+    graph2.connect(0, 1, 14);
+    graph2.connect(1, 2, 15);
+
     // Make sure the graph is correct by printing it
     graph.print();
 
