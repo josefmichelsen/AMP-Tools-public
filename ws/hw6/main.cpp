@@ -174,9 +174,9 @@ class MyPointWaveFrontAlgorithm : public PointWaveFrontAlgorithm{
 
         path.waypoints.push_back(q_goal);
 
-        Visualizer test;
-        test.makeFigure(grid_cspace, path);
-        test.showFigures();
+        // Visualizer test;
+        // test.makeFigure(grid_cspace, path);
+        // test.showFigures();
 
         return path;
     }
@@ -285,9 +285,9 @@ class MyGridCSpace2DConstructor : public amp::GridCSpace2DConstructor{
         std::unique_ptr<amp::GridCSpace2D> ans;
         ans.reset(grid_obj);
         //std::cout << "returning grid\n";
-        Visualizer test;
-        test.makeFigure(env);
-        test.showFigures();
+        // Visualizer test;
+        // test.makeFigure(env);
+        // test.showFigures();
         return ans;
     }
 
@@ -338,7 +338,7 @@ class MyAstar : public AStar{
                 ans.node_path = path;
 
                 ans.path_cost = g_score[problem.goal_node];
-                std::cout << "number of iterations to get to goal is " << number_of_iterations << "\n";
+                //std::cout << "number of iterations to get to goal is " << number_of_iterations << "\n";
                 return ans;
             }
             
@@ -427,7 +427,21 @@ class MyManipulatorWaveFrontAlgorithm : public ManipulatorWaveFrontAlgorithm{
         amp::Path2D path;
         amp::Path2D path_test;
         path.waypoints.push_back(q_init);
-        path_test.waypoints.push_back(q_init * 180/3.141592653589793238463);
+        double test_init_x = q_init[0] * 180/3.141592653589793238463;
+        double test_init_y = q_init[1] * 180/3.141592653589793238463;
+        if(q_init[0] < 0){
+            test_init_x = (test_init_x + 360);
+        }
+        if(q_init[1] < 0){
+            test_init_y = (test_init_y + 360);
+        }
+
+
+        Eigen::Vector2d test_init(test_init_x, test_init_y);
+        path_test.waypoints.push_back(test_init);
+    
+        
+        
         // double current_x = q_goal[0];
         // double current_y = q_goal[1];
 
@@ -438,10 +452,24 @@ class MyManipulatorWaveFrontAlgorithm : public ManipulatorWaveFrontAlgorithm{
         int y_finish = q_init[1] * 180/3.141592653589793238463;
         int x_start = q_goal[0] * 180/3.141592653589793238463;
         int y_start = q_goal[1] * 180/3.141592653589793238463;
+
+        if(x_start < 0){
+            x_start = 360 + x_start;
+        }
+        if(y_start < 0){
+            y_start = 360 + y_start;
+        }
+        if(x_finish < 0){
+            x_finish = 360 + x_finish;
+        }
+        if(y_finish < 0){
+            y_finish = 360 + y_finish;
+        }
         // std::cout << "goal x " << x_start << " goal y " << y_start << "\n";
         // std::cout << "init x " << x_finish << " init y " << y_finish << "\n";
         // std::cout << "true goal x " << q_goal[0] << " true goal y " << q_goal[1] << "\n";
         // std::cout << "true init x " << q_init[0] << " true init y " << q_init[1] << "\n";
+        // std::cout << "test init x " << test_init_x << " test init y " << test_init_y << "\n";
 
         std::vector<std::vector<int> > wave_grid(grid_size.first, std::vector<int>(grid_size.second));
 
@@ -468,9 +496,9 @@ class MyManipulatorWaveFrontAlgorithm : public ManipulatorWaveFrontAlgorithm{
         std::pair<double, double> x_bounds = grid_cspace.x0Bounds();
         std::pair<double, double> y_bounds = grid_cspace.x1Bounds();
 
-        Visualizer test_broke;
-        test_broke.makeFigure(grid_cspace);
-        test_broke.showFigures();
+        // Visualizer test_broke;
+        // test_broke.makeFigure(grid_cspace);
+        // test_broke.showFigures();
 
         while(wave_grid[x_finish][y_finish] == 0 && iter < 5000){
             for(int j = 0; j < grid_size.second; j++){
@@ -561,15 +589,15 @@ class MyManipulatorWaveFrontAlgorithm : public ManipulatorWaveFrontAlgorithm{
 
             cell_value = wave_grid[path_x][path_y];
 
-            double x_to_push = path_x + x_bounds.first - 0.01;
-            double y_to_push = path_y + y_bounds.first - 0.01;
+            double x_to_push = path_x + x_bounds.first - 0.1;
+            double y_to_push = path_y + y_bounds.first - 0.1;
             Eigen::Vector2d next_point_test(x_to_push, y_to_push);
-            if(x_to_push * 3.141592653589793238463/180 < 0){
-                x_to_push = 0;
-            }
-            if( y_to_push * 3.141592653589793238463/180){
-                y_to_push = 0;
-            }
+            // if(x_to_push * 3.141592653589793238463/180 < 0){
+            //     x_to_push = 0;
+            // }
+            // if( y_to_push * 3.141592653589793238463/180){
+            //     y_to_push = 0;
+            // }
             Eigen::Vector2d next_point(x_to_push * 3.141592653589793238463/180, y_to_push * 3.141592653589793238463/180);
             path.waypoints.push_back(next_point);
             path_test.waypoints.push_back(next_point_test);
@@ -579,13 +607,27 @@ class MyManipulatorWaveFrontAlgorithm : public ManipulatorWaveFrontAlgorithm{
         }
         
         //std::cout << "number of iterations = " << iter << "\n";
+        double test_goal_x = q_goal[0]* 180/3.141592653589793238463;
+        double test_goal_y = q_goal[1]* 180/3.141592653589793238463;
+        if(q_goal[0] < 0){
+            test_goal_x = test_goal_x + 360;
+        }
+        if(q_goal[1] < 0){
+            test_goal_y = test_goal_y + 360;
+        }
+        Eigen::Vector2d test_goal(test_goal_x, test_goal_y);
+        path_test.waypoints.push_back(test_goal);
+        //std::cout << "test goal x " << test_goal_x << " test goal y " << test_goal_y << "\n";
+
+
         path.waypoints.push_back(q_goal);
 
         unwrapPath(path, Eigen::Vector2d(0,0), Eigen::Vector2d(2*3.141592653589793238463, 2*3.141592653589793238463));
+        
         path_test.waypoints.push_back(q_goal* 180/3.141592653589793238463);
-        Visualizer test;
-        test.makeFigure(grid_cspace, path_test);
-        test.showFigures();
+        // Visualizer test;
+        // test.makeFigure(grid_cspace, path_test);
+        // test.showFigures();
         // std::cout << "size of path is " << path.waypoints.size() << "\n";
         // for(int i = 0; i < path.waypoints.size(); i++){
         //     std::cout<< path.waypoints[i][0] << "  " << path.waypoints[i][1] << "\n";
@@ -679,19 +721,19 @@ int main(int argc, char** argv) {
     // link.showFigures();
 
     //MyManipulatorWaveFrontAlgorithm* I_hate_this_class = new MyManipulatorWaveFrontAlgorithm();
-    // MyLinkManipulator2D* link_to_pass = new MyLinkManipulator2D({1.0,1.0});
-    // std::unique_ptr<amp::LinkManipulator2D> this_is_so_stupid;
-    // this_is_so_stupid.reset(link_to_pass);
-    // amp::Problem2D problem_link_traj = HW6::getHW4Problem1(); 
-    // //amp::ManipulatorTrajectory2Link traj = I_hate_this_class.plan(*this_is_so_stupid, problem_link_traj);
+    MyLinkManipulator2D* link_to_pass = new MyLinkManipulator2D({1.0,1.0});
+    std::unique_ptr<amp::LinkManipulator2D> this_is_so_stupid;
+    this_is_so_stupid.reset(link_to_pass);
+    amp::Problem2D problem_link_traj = HW6::getHW4Problem3(); 
+    //amp::ManipulatorTrajectory2Link traj = I_hate_this_class.plan(*this_is_so_stupid, problem_link_traj);
 
-    // MyLinkManipulatorMotionPlanner2D link_motion_plan;
-    // amp::ManipulatorTrajectory2Link traj = link_motion_plan.plan(*this_is_so_stupid, problem_link_traj);
-    // //std::cout<< "got back from the traj plan\n";
+    MyLinkManipulatorMotionPlanner2D link_motion_plan;
+    amp::ManipulatorTrajectory2Link traj = link_motion_plan.plan(*this_is_so_stupid, problem_link_traj);
+    //std::cout<< "got back from the traj plan\n";
     
     
 
-    // bool pass_link = amp::HW6::checkLinkManipulatorPlan(traj, *this_is_so_stupid, problem_link_traj, true);
+    bool pass_link = amp::HW6::checkLinkManipulatorPlan(traj, *this_is_so_stupid, problem_link_traj, true);
     // std::cout << "did I pass link check " << pass_link << "\n";
     // Visualizer link_prob;
     // link_prob.makeFigure(problem_link_traj, *this_is_so_stupid, traj );
@@ -727,21 +769,21 @@ int main(int argc, char** argv) {
     graph.get()->connect(11, 13, 1);
     graph.get()->connect(12, 11, 3);
 
-    amp::LookupSearchHeuristic test_heuristic = HW6::getEx3Heuristic();
+    //amp::LookupSearchHeuristic test_heuristic = HW6::getEx3Heuristic();
     //amp::LookupSearchHeuristic djikstra = amp::operator(); 
 
-    MyAstar astar_search;
-    ShortestPathProblem path_to_pass;
-    path_to_pass.graph = graph;
-    path_to_pass.goal_node = 13;
-    path_to_pass.init_node = 0;
-    amp::AStar::GraphSearchResult graph_path = astar_search.search(path_to_pass,amp::SearchHeuristic());
-    std::cout << "path cost " << graph_path.path_cost << "\n";
-    for(auto i : graph_path.node_path){
-        std::cout << i << "\n";
-    }
+    // MyAstar astar_search;
+    // ShortestPathProblem path_to_pass;
+    // path_to_pass.graph = graph;
+    // path_to_pass.goal_node = 13;
+    // path_to_pass.init_node = 0;
+    // amp::AStar::GraphSearchResult graph_path = astar_search.search(path_to_pass,amp::SearchHeuristic());
+    // std::cout << "path cost " << graph_path.path_cost << "\n";
+    // for(auto i : graph_path.node_path){
+    //     std::cout << i << "\n";
+    // }
     
-    bool did_i_pass_graph = HW6::checkGraphSearchResult(graph_path, path_to_pass, amp::SearchHeuristic(), true);
+    //bool did_i_pass_graph = HW6::checkGraphSearchResult(graph_path, path_to_pass, amp::SearchHeuristic(), true);
     
     // MyPointMotionPlanner2D* my_motion_plan_grade = new MyPointMotionPlanner2D();
     // MyLinkManipulatorMotionPlanner2D* my_link_motion_plan_grade = new MyLinkManipulatorMotionPlanner2D();
@@ -755,10 +797,10 @@ int main(int argc, char** argv) {
     // link_motion_to_pass.reset(my_link_motion_plan_grade);
     // astar_to_pass.reset(my_astar_grade);
 
-    // MyGridCSpace2DConstructor* Myc_space_constructor = new MyGridCSpace2DConstructor();
-    // std::shared_ptr<GridCSpace2DConstructor> c_space_constructor;
-    // c_space_constructor.reset(Myc_space_constructor);
-    //amp::HW6::grade<MyPointWaveFrontAlgorithm, MyManipulatorWaveFrontAlgorithm, MyAstar>("jomi7243@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(c_space_constructor), std::make_tuple());
+    MyGridCSpace2DConstructor* Myc_space_constructor = new MyGridCSpace2DConstructor();
+    std::shared_ptr<GridCSpace2DConstructor> c_space_constructor;
+    c_space_constructor.reset(Myc_space_constructor);
+    amp::HW6::grade<MyPointWaveFrontAlgorithm, MyManipulatorWaveFrontAlgorithm, MyAstar>("jomi7243@colorado.edu", argc, argv, std::make_tuple(), std::make_tuple(c_space_constructor), std::make_tuple());
     
 
     return 0;

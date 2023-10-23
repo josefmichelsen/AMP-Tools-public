@@ -26,7 +26,7 @@ Eigen::Vector2d MyLinkManipulator2D::getJointLocation(const amp::ManipulatorStat
 }
 
 amp::ManipulatorState MyLinkManipulator2D::getConfigurationFromIK(const Eigen::Vector2d& end_effector_location) const{
-    std::cout << "inside IK function\n";
+    //std::cout << "inside IK function\n";
     std::vector<double> links = this->getLinkLengths();
     Eigen::Vector2d base_loc = this->getBaseLocation();
     //std::cout << "got link lengths\n";
@@ -46,7 +46,7 @@ amp::ManipulatorState MyLinkManipulator2D::getConfigurationFromIK(const Eigen::V
     }
     
     //amp::ManipulatorState ans;
-    std::cout << "end effector location I calculated " << t1 << " " << t2 << "\n";
+    //std::cout << "end effector location I calculated " << t1 << " " << t2 << "\n";
     Eigen::VectorXd ans(2); 
     ans << t1, t2;
     
