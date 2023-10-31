@@ -14,7 +14,7 @@ class MyGridCSpace2D : public GridCSpace2D{
 
     public:
 
-    double grid_side_length;
+    //double grid_side_length;
 
     MyGridCSpace2D(std::size_t x0_cells, std::size_t x1_cells, double x0_min, double x0_max, double x1_min, double x1_max)
         : GridCSpace2D(x0_cells, x1_cells, x0_min, x0_max, x1_min, x1_max){}
@@ -24,8 +24,8 @@ class MyGridCSpace2D : public GridCSpace2D{
         std::pair<double, double> x_dimensions = this->m_x0_bounds;
         std::pair<double, double> y_dimensions = this->m_x1_bounds;
 
-        std::size_t i = floor((x0 - x_dimensions.first) / grid_side_length);
-        std::size_t j = floor((x1 - y_dimensions.first) / grid_side_length);
+        std::size_t i = floor((x0 - x_dimensions.first) / 0.25);
+        std::size_t j = floor((x1 - y_dimensions.first) / 0.25);
 
         std::pair<std::size_t, std::size_t> ans(i,j);
 
@@ -45,7 +45,7 @@ class MyPointWaveFrontAlgorithm : public PointWaveFrontAlgorithm{
         double grid_side = 0.25;
         MyGridCSpace2D* grid = new MyGridCSpace2D((environment.x_max - environment.x_min)/grid_side, (environment.y_max - environment.y_min)/grid_side, environment.x_min, environment.x_max, environment.y_min, environment.y_max);
         
-        grid->grid_side_length = 0.25;
+        //grid->grid_side_length = 0.25;
         //std::cout << "starting to create discretized workspace\n";
         for(double i = grid_side/2 + environment.x_min; i < environment.x_max; i += grid_side){
             for(double j = grid_side/2 + environment.y_min; j < environment.y_max; j += grid_side){
@@ -177,6 +177,8 @@ class MyPointWaveFrontAlgorithm : public PointWaveFrontAlgorithm{
         // Visualizer test;
         // test.makeFigure(grid_cspace, path);
         // test.showFigures();
+        // std::cout<< "here\n";
+        // sleep(3);
 
         return path;
     }
@@ -299,15 +301,16 @@ class MyAstar : public AStar{
 
     virtual GraphSearchResult search(const amp::ShortestPathProblem& problem, const amp::SearchHeuristic& heuristic){
 
-        GraphSearchResult ans;
+        GraphSearchResult ans; //= new GraphSearchResult();
+        //problem.graph->print();
 
         std::vector<amp::Node> open_set = {problem.init_node};
         std::vector<amp::Node> closed_set = {};
-        std::vector<double> g_score(problem.graph.get()->nodes().size(), 1000);
-        std::vector<double> f_score(problem.graph.get()->nodes().size(), 1000);
+        std::vector<double> g_score(problem.graph.get()->nodes().size(), std::numeric_limits<double>::infinity());
+        std::vector<double> f_score(problem.graph.get()->nodes().size(), std::numeric_limits<double>::infinity());
         std::vector<amp::Node> came_from(problem.graph.get()->nodes().size());
-        f_score[0] = heuristic.operator()(problem.init_node);
-        g_score[0] = 0;
+        f_score[problem.init_node] = heuristic.operator()(problem.init_node);
+        g_score[problem.init_node] = 0;
         int number_of_iterations = 0;
         
         while(!open_set.empty()){
@@ -325,7 +328,7 @@ class MyAstar : public AStar{
             }
 
             amp::Node current_node = open_set[next_node_index];
-
+            //std::cout << "current node  " << current_node << "  goal node  " << problem.goal_node << "\n";
             if(current_node == problem.goal_node){
                 ans.success = true;
                 amp::Node path_iter = problem.goal_node;
@@ -339,6 +342,7 @@ class MyAstar : public AStar{
 
                 ans.path_cost = g_score[problem.goal_node];
                 //std::cout << "number of iterations to get to goal is " << number_of_iterations << "\n";
+                //std::cout << "success\n";
                 return ans;
             }
             
@@ -348,9 +352,9 @@ class MyAstar : public AStar{
             std::vector<double> edge_weights_from_current_node = problem.graph.get()->outgoingEdges(current_node);            
 
             for(int i = 0; i < children_of_current_node.size(); i++){
-                
+                //std::cout << "we are at child " << i << "\n";
                 double tentative_gscore = g_score[current_node] + edge_weights_from_current_node[i];
-                //std::cout << "I am at node  " << current_node << "  child of current node  " << children_of_current_node[i] << " tentative g score is g score current node " << g_score[current_node]<< "  plus  " <<edge_weights_from_current_node[i]<< "\n";
+                //std::cout << "I am at node  " << current_node << "  child of current node  " << children_of_current_node[i] << " tentative g score is " << tentative_gscore << "  g score current node " << g_score[current_node]<< "  plus  " <<edge_weights_from_current_node[i]<< "\n";
                 if(tentative_gscore < g_score[children_of_current_node[i]]){
                     came_from[children_of_current_node[i]] = current_node;
                     g_score[children_of_current_node[i]] = tentative_gscore;
@@ -374,6 +378,8 @@ class MyAstar : public AStar{
         }
 
         ans.success = false;
+        //std::cout << "number of iterations to fail is " << number_of_iterations << "\n";
+        //std::cout << "fail\n";
         return ans;
     }
 };
@@ -394,7 +400,7 @@ class MyPointMotionPlanner2D : public PointMotionPlanner2D{
         
         MyGridCSpace2D grid(x0_cells, x1_cells, x0_min, x0_max, x1_min, x1_max);
 
-        grid.grid_side_length = 0.25;
+        //grid.grid_side_length = 0.25;
 
         MyPointWaveFrontAlgorithm wave;
 
@@ -662,6 +668,7 @@ class MyLinkManipulatorMotionPlanner2D : public LinkManipulatorMotionPlanner2D{
 
 
 int main(int argc, char** argv) {    
+
     //Problem2D ex_1 = HW2::getWorkspace1();
     //Problem2D ex_1 = HW2::getWorkspace2();
 
@@ -733,7 +740,7 @@ int main(int argc, char** argv) {
     
     
 
-    bool pass_link = amp::HW6::checkLinkManipulatorPlan(traj, *this_is_so_stupid, problem_link_traj, true);
+    //bool pass_link = amp::HW6::checkLinkManipulatorPlan(traj, *this_is_so_stupid, problem_link_traj, true);
     // std::cout << "did I pass link check " << pass_link << "\n";
     // Visualizer link_prob;
     // link_prob.makeFigure(problem_link_traj, *this_is_so_stupid, traj );
@@ -796,6 +803,22 @@ int main(int argc, char** argv) {
     // point_motion_to_pass.reset(my_motion_plan_grade);
     // link_motion_to_pass.reset(my_link_motion_plan_grade);
     // astar_to_pass.reset(my_astar_grade);
+
+    // MyAstar* astar = new MyAstar();
+    // std::shared_ptr<AStar> astar_pass;
+    // astar_pass.reset(astar);
+    // bool astar_check = amp::HW6::generateAndCheck(*astar_pass, true, seed);
+    // uint32_t seed = 5;
+    // MyPointMotionPlanner2D* mypoint = new MyPointMotionPlanner2D();
+    // std::shared_ptr<PointMotionPlanner2D> point_pass;
+    // point_pass.reset(mypoint);
+    // std::vector<Eigen::Vector2d> collision_points;
+    // amp::Path2D path;
+    // amp::Problem2D prob;
+    // bool point_test = amp::HW6::generateAndCheck(*point_pass, path, prob, true, seed);
+    // Visualizer tst;
+    // tst.makeFigure(prob, path);
+    // tst.showFigures();
 
     MyGridCSpace2DConstructor* Myc_space_constructor = new MyGridCSpace2DConstructor();
     std::shared_ptr<GridCSpace2DConstructor> c_space_constructor;

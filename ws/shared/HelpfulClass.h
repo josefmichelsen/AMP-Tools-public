@@ -30,3 +30,15 @@ class MyGridCSpace2D_ForLinks : public amp::GridCSpace2D{
     virtual std::pair<std::size_t, std::size_t> getCellFromPoint(double x0, double x1) const;
 
 };
+
+bool PointCollisionCheck(double x, double y, const amp::Problem2D& problem);
+bool ConnectionCollisionCheck(Eigen::Vector2d p1, Eigen::Vector2d p2, const amp::Problem2D& problem);
+double DistanceBetweenNodes(Eigen::Vector2d n1, Eigen::Vector2d n2);
+int orientation(double x1, double y1, double x2, double y2, double x3, double y3);
+
+class NewMyAstar : public amp::AStar{
+
+    public:
+
+    virtual amp::AStar::GraphSearchResult search(const amp::ShortestPathProblem& problem, const amp::SearchHeuristic& heuristic);
+};
