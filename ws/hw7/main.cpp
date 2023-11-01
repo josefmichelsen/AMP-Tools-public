@@ -70,29 +70,32 @@ class MyPRM2D : public PRM2D {
                 path.waypoints.push_back(node_to_coord[i]);
             }
             //Path smoothing
-            std::vector<Eigen::Vector2d> temp;
-            for(int k = 0; k < 10 ; k++){
-                for(int i = 0; i < path.waypoints.size() - 2; i++){
-                    bool link_collision_temp = ConnectionCollisionCheck(path.waypoints[i], path.waypoints[i + 2], problem);
-                    if(!link_collision_temp){
-                        for(int j = 0; j < path.waypoints.size() - 1; j++){
-                            if(j == i + 1){
-                                continue;
-                            }
-                            else{
-                                temp.push_back(path.waypoints[j]);
-                            }
-                        }
-                        path.waypoints = temp;
-                        break;
-                    }
-                }
-            }
+            
+            // for(int k = 0; k < 10 ; k++){
+            //     std::vector<Eigen::Vector2d> temp = {{}};
+            //     for(int i = 0; i < path.waypoints.size() - 2; i++){
+            //         bool link_collision_temp = ConnectionCollisionCheck(path.waypoints[i], path.waypoints[i + 2], problem);
+            //         if(!link_collision_temp){
+            //             for(int j = 0; j < path.waypoints.size() - 1; j++){
+            //                 if(j == i + 1){
+            //                     continue;
+            //                 }
+            //                 else{
+            //                     temp.push_back(path.waypoints[j]);
+            //                 }
+            //             }
+            //             for(int p = 0; p < temp.size(); p++){
+            //                 path.waypoints.at(p) = temp.at(p);
+            //             }
+            //             break;
+            //         }
+            //     }
+            // }
 
-            // Visualizer test;
-            // test.makeFigure(problem, path);
-            // test.makeFigure(problem, *graph, node_to_coord);
-            // test.showFigures();
+            Visualizer test;
+            test.makeFigure(problem, path);
+            test.makeFigure(problem, *graph, node_to_coord);
+            test.showFigures();
             path.valid = graph_path.success;
             //graph.reset();
             return path;
@@ -252,8 +255,8 @@ int main(int argc, char** argv) {
     std::vector<double> length_vec = {};
     std::vector<double> success_vec = {};
 
-    prm.n = 1000;
-    prm.r = 2.0;
+    prm.n = 200;
+    prm.r = 1.5;
 
     rrt.n = 5000;
     rrt.r = 0.5;
@@ -272,7 +275,7 @@ int main(int argc, char** argv) {
         //std::cout << "we are in loop " << i << "\n";
 
         Timer time("test");
-        amp::Path2D path = prm.plan(hw2_w1);
+        amp::Path2D path = prm.plan(hw5_environment);
         time.stop();
         double prm_time = profile.getMostRecentProfile("test", TimeUnit::ms);
         time_vec.push_back(prm_time);
