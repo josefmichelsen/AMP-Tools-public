@@ -386,11 +386,19 @@ amp::AStar::GraphSearchResult NewMyAstar::search(const amp::ShortestPathProblem&
 
     std::vector<amp::Node> open_set = {problem.init_node};
     std::vector<amp::Node> closed_set = {};
-    std::vector<double> g_score(problem.graph.get()->nodes().size(), std::numeric_limits<double>::infinity());
-    
-    std::vector<double> f_score(problem.graph.get()->nodes().size(), std::numeric_limits<double>::infinity());
-    //std::cout << "size of fscore is " << problem.graph.get()->nodes().size() << "\n";
-    std::vector<amp::Node> came_from(problem.graph.get()->nodes().size());
+    std::vector<amp::Node> temp_vec = problem.graph.get()->nodes();
+    int max_size = 0;
+    for(int i = 0; i < problem.graph.get()->nodes().size(); i++){
+        if(temp_vec.at(i) >= max_size){
+            max_size = (int)temp_vec.at(i) + 1;
+        }
+    }
+    // std::vector<double> g_score(problem.graph.get()->nodes().size(), std::numeric_limits<double>::infinity());
+    // std::vector<double> f_score(problem.graph.get()->nodes().size(), std::numeric_limits<double>::infinity());
+    // std::vector<amp::Node> came_from(problem.graph.get()->nodes().size());
+    std::vector<double> g_score(max_size, std::numeric_limits<double>::infinity());
+    std::vector<double> f_score(max_size, std::numeric_limits<double>::infinity());
+    std::vector<amp::Node> came_from(max_size);
     f_score[problem.init_node] = heuristic.operator()(problem.init_node);
     g_score[problem.init_node] = 0;
     int number_of_iterations = 0;
@@ -434,14 +442,28 @@ amp::AStar::GraphSearchResult NewMyAstar::search(const amp::ShortestPathProblem&
         open_set.erase(open_set.begin() + next_node_index);
 
         std::vector<amp::Node> children_of_current_node = problem.graph.get()->children(current_node);
-        std::vector<double> edge_weights_from_current_node = problem.graph.get()->outgoingEdges(current_node);            
+        std::vector<double> edge_weights_from_current_node = problem.graph.get()->outgoingEdges(current_node); 
+        std::map<amp::Node, int> node_to_vec_indx;
+        
+        //std::cout << "number of child nodes " << children_of_current_node.size() << "\n";     
 
         for(int i = 0; i < children_of_current_node.size(); i++){
             //std::cout << "we are at child " << i << "\n";
             double tentative_gscore = g_score[current_node] + edge_weights_from_current_node[i];
             //std::cout << "I am at node  " << current_node << "  child of current node  " << children_of_current_node[i] << " tentative g score is " << tentative_gscore << "  g score current node " << g_score[current_node]<< "  plus  " <<edge_weights_from_current_node[i]<< "\n";
-            //std::cout << "gscore of child is valid " << g_score[children_of_current_node[i]] << "\n";
-            if(tentative_gscore < g_score[children_of_current_node[i]]){
+            // std::cout << "index I want to access " << children_of_current_node[i] << "\n";
+            // std::cout << "size of g score " << g_score.size() << "\n";
+            //int correct_iter = i;
+            // if(children_of_current_node[i] > g_score.size()){
+            //     for(int j = 0; j < g_score.size(); j++){
+            //         if(g_score.at(j) == children_of_current_node[i]){
+            //             correct_iter = j;
+            //         }
+            //     }
+            // }
+
+            //std::cout << "corrected iter " << correct_iter << "\n";
+            if(tentative_gscore < g_score.at(children_of_current_node[i])){
                 //std::cout << "in if\n";
                 came_from[children_of_current_node[i]] = current_node;
                 //std::cout << "came from ok\n";
