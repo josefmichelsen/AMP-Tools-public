@@ -500,3 +500,275 @@ amp::AStar::GraphSearchResult NewMyAstar::search(const amp::ShortestPathProblem&
     return ans;
 }
 
+
+std::vector<Eigen::Vector2d> SquareAgentCorners(Eigen::Vector2d center, double r){
+    Eigen::Vector2d bottom_left = {center[0] - r, center[1] - r};
+    Eigen::Vector2d bottom_right = {center[0] + r, center[1] - r};
+    Eigen::Vector2d top_right = {center[0] + r, center[1] + r};
+    Eigen::Vector2d top_left = {center[0] - r, center[1] + r};
+
+    // std::vector<double> bottom_middle = {center[0], center[1] - r};
+    // std::vector<double> right_middle = {center[0] + r, center[1]};
+    // std::vector<double> top_middle = {center[0], center[1] + r};
+    // std::vector<double> left_middle = {center[0] - r, center[1]};
+
+    //std::vector<std::vector<double> > vertices = {bottom_left, bottom_right, top_right, top_left, bottom_middle, right_middle, top_middle, left_middle};
+    std::vector<Eigen::Vector2d> vertices = {bottom_left, bottom_right, top_right, top_left};
+    return vertices;
+}
+
+
+Eigen::Vector2d PotentialPoint(double p_goal, const amp::MultiAgentProblem2D& problem, int robot){
+    double prob_of_goal =  amp::RNG::randd(0, 1);
+    Eigen::Vector2d potential_point;
+    if(prob_of_goal < p_goal){
+        potential_point[0] = problem.agent_properties[robot].q_goal[0];
+        potential_point[1] = problem.agent_properties[robot].q_goal[1];
+    }
+    else{
+        potential_point[0] = amp::RNG::randd(problem.x_min , problem.x_max);
+        potential_point[1] = amp::RNG::randd(problem.y_min , problem.y_max);
+    }
+    return potential_point;
+}
+
+bool PointCollisionCheckMultiAgent(double x, double y, const amp::MultiAgentProblem2D& problem){
+    
+    double min_x, max_x, min_y, max_y;    
+
+    for (int i = 0; i < problem.obstacles.size(); i++){
+        //std::cout << "looking at obstacle " << i << "\n";
+        min_x = problem.obstacles[i].verticesCCW()[0][0];
+        max_x = problem.obstacles[i].verticesCCW()[0][0];
+        min_y = problem.obstacles[i].verticesCCW()[0][1];
+        max_y = problem.obstacles[i].verticesCCW()[0][1];
+        
+        for (int j = 0; j < problem.obstacles[i].verticesCCW().size(); j ++){
+
+            if (problem.obstacles[i].verticesCCW()[j][0] < min_x){
+                min_x = problem.obstacles[i].verticesCCW()[j][0];
+            }
+            else if (problem.obstacles[i].verticesCCW()[j][0] > max_x){
+                max_x = problem.obstacles[i].verticesCCW()[j][0];
+            }
+            else if (problem.obstacles[i].verticesCCW()[j][1] < min_y){
+                min_y = problem.obstacles[i].verticesCCW()[j][1];
+            }
+            else if (problem.obstacles[i].verticesCCW()[j][1] > max_y){
+                max_y = problem.obstacles[i].verticesCCW()[j][1];
+            }
+
+        }
+        
+        if (x >= min_x && x <= max_x && y >= min_y && y <= max_y){ //this is where we need collision logic for end effector
+
+            int cw = 0;
+            int ccw = 0;
+
+            for(int k = 0; k < problem.obstacles[i].verticesCCW().size(); k++){
+                
+                double x2, y2, cross, x1, y1;
+
+                if (k == problem.obstacles[i].verticesCCW().size() - 1){
+
+                    x2 = problem.obstacles[i].verticesCCW()[0][0];
+                    y2 = problem.obstacles[i].verticesCCW()[0][1];
+                }
+                else{
+
+                    x2 = problem.obstacles[i].verticesCCW()[k + 1][0];
+                    y2 = problem.obstacles[i].verticesCCW()[k + 1][1];
+
+                }
+
+                x1 = problem.obstacles[i].verticesCCW()[k][0];
+                y1 = problem.obstacles[i].verticesCCW()[k][1];
+
+                cross = (x - x1) * (y2 - y1) - (y - y1) * (x2 - x1);
+
+                if (cross > 0 ){
+                    ccw = ccw + 1;
+                }
+                else if (cross < 0){
+                    cw = cw + 1;
+                }
+                else if (cross == 0){
+                    //this means they are all on the same line
+                    if(x >= std::min(x1,x2) && x <= std::max(x1,x2) && y >= std::min(y1,y2) && y <= std::max(y1,y2)){
+                        return true;
+                    }
+                }
+
+            }
+
+            if (ccw > 0 && cw > 0 ){
+                return false; // it is not inside
+            }
+            else{
+                return true;
+            }
+            
+        }
+        
+    }
+    
+    return false;
+}
+
+Eigen::Vector2d NewCloserPoint(Eigen::Vector2d current_point, Eigen::Vector2d next_point, double step_size){
+    double x = next_point[0] - current_point[0];
+    double y = next_point[1] - current_point[1];
+    float theta = std::atan2(y,x);
+    Eigen::Vector2d next_pos(current_point[0] + (std::cos(theta) * step_size), current_point[1] + (std::sin(theta) * step_size));
+    return next_pos;
+}
+
+amp::Node FindClosestNode(std::vector<Eigen::Vector2d> next_positions, std::shared_ptr<amp::Graph<double> >& graph, std::map<amp::Node, std::vector<Eigen::Vector2d> >& node_to_coord, const amp::MultiAgentProblem2D& problem, std::vector<bool> robot_at_goal){
+    double smallest_total_distance = std::numeric_limits<double>::infinity();
+    amp::Node closest_node;
+    for(int i = 0; i < graph.get()->nodes().size(); i++){
+        double challenge_distance = 0;
+        bool right_robots_at_goal = true;
+        for(int j = 0; j < node_to_coord[i].size(); j++){
+            challenge_distance = challenge_distance + DistanceBetweenNodes(node_to_coord[i][j], next_positions[j]);
+            if(robot_at_goal[j] == true){
+                bool does_x_match = node_to_coord[i][j][0] == problem.agent_properties[j].q_goal[0];
+                bool does_y_match = node_to_coord[i][j][1] == problem.agent_properties[j].q_goal[1];
+                if(does_x_match == false || does_y_match == false){
+                    right_robots_at_goal = false;
+                }
+            }
+        }
+        if(challenge_distance < smallest_total_distance && challenge_distance != 0 && right_robots_at_goal){
+            smallest_total_distance = challenge_distance;
+            closest_node = i;
+        }
+    }
+    return closest_node;
+}
+
+bool WillRobotsCollide(std::vector<Eigen::Vector2d> next_positions, const amp::MultiAgentProblem2D& problem){
+    for(int i = 0; i < next_positions.size(); i++){
+        for(int j = 0; j < next_positions.size(); j++){
+            if(i != j){
+                double dist = DistanceBetweenNodes(next_positions[i], next_positions[j]);
+                if(dist < (problem.agent_properties[i].radius + problem.agent_properties[j].radius + 0.1)){
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+amp::Node FindClosestNodeDecentralized(Eigen::Vector2d next_position, std::shared_ptr<amp::Graph<double> >& graph, std::map<amp::Node, Eigen::Vector2d>& node_to_coord){
+    double smallest_distance = std::numeric_limits<double>::infinity();
+    amp::Node closest_node;
+    for(int i = 0; i < graph.get()->nodes().size(); i++){
+        double dist_from_node_to_next_pos = DistanceBetweenNodes(node_to_coord[i], next_position);
+        if(dist_from_node_to_next_pos < smallest_distance){
+            smallest_distance = dist_from_node_to_next_pos;
+            closest_node = i;
+        }
+    }
+    return closest_node;
+}
+
+// TODO FIX ISSUE WITH COLLISION DETECTION
+
+bool WillRobotsCollideDecentralized(Eigen::Vector2d next_position, amp::MultiAgentPath2D& path, int current_agent, int time_step, double r){
+    for(int i = 0; i < current_agent; i++){
+        int index = time_step;
+        if(time_step > path.agent_paths[i].waypoints.size() - 1){
+            index = path.agent_paths[i].waypoints.size() - 1;
+        }
+        double dist = DistanceBetweenNodes(next_position, path.agent_paths[i].waypoints[index]);
+        //std::cout << "next position " << next_position[0] << " " << next_position[1] << " robot " << i << " position " << path.agent_paths[i].waypoints[index][0] << " " << path.agent_paths[i].waypoints[index][1] << " distance " << dist << " at iteration " <<time_step<< "\n";
+        if(dist < (2 * r + 0.25)){
+            return true;
+        }
+    }
+    return false;
+}
+
+
+bool NewConnectionCollisionCheck(Eigen::Vector2d p1, Eigen::Vector2d p2, const amp::MultiAgentProblem2D& problem){
+    
+    double min_x, max_x, min_y, max_y;
+
+    double x_1 = p1[0];
+    double y_1 = p1[1];
+    double x_2 = p2[0];
+    double y_2 = p2[1];
+
+    for (int i = 0; i < problem.obstacles.size(); i++){
+        //std::cout << "looking at obstacle " << i << "\n";
+        min_x = problem.obstacles[i].verticesCCW()[0][0];
+        max_x = problem.obstacles[i].verticesCCW()[0][0];
+        min_y = problem.obstacles[i].verticesCCW()[0][1];
+        max_y = problem.obstacles[i].verticesCCW()[0][1];
+        
+        for (int j = 0; j < problem.obstacles[i].verticesCCW().size(); j ++){
+
+            if (problem.obstacles[i].verticesCCW()[j][0] < min_x){
+                min_x = problem.obstacles[i].verticesCCW()[j][0];
+            }
+            else if (problem.obstacles[i].verticesCCW()[j][0] > max_x){
+                max_x = problem.obstacles[i].verticesCCW()[j][0];
+            }
+            else if (problem.obstacles[i].verticesCCW()[j][1] < min_y){
+                min_y = problem.obstacles[i].verticesCCW()[j][1];
+            }
+            else if (problem.obstacles[i].verticesCCW()[j][1] > max_y){
+                max_y = problem.obstacles[i].verticesCCW()[j][1];
+            }
+
+        }
+        
+        if( std::min(x_1, x_2) < max_x && std::min(y_1, y_2) < max_y){
+            for(int iter = 0; iter < problem.obstacles[i].verticesCCW().size(); iter++){
+                double vertex_x = problem.obstacles[i].verticesCCW()[iter][0];
+                double vertex_y = problem.obstacles[i].verticesCCW()[iter][1];
+                double next_vertex_x, next_vertex_y;
+                
+                if(iter == problem.obstacles[i].verticesCCW().size() - 1){
+                    next_vertex_x = problem.obstacles[i].verticesCCW()[0][0];
+                    next_vertex_y = problem.obstacles[i].verticesCCW()[0][1];
+                }
+                else{
+                    next_vertex_x = problem.obstacles[i].verticesCCW()[iter + 1][0];
+                    next_vertex_y = problem.obstacles[i].verticesCCW()[iter + 1][1];
+                }
+
+                int orient1 = orientation(x_1, y_1, x_2, y_2, vertex_x, vertex_y);
+                int orient2 = orientation(x_1, y_1, x_2, y_2, next_vertex_x, next_vertex_y);
+                int orient3 = orientation(vertex_x, vertex_y, next_vertex_x, next_vertex_y, x_1, y_1);
+                int orient4 = orientation(vertex_x, vertex_y, next_vertex_x, next_vertex_y, x_2, y_2);
+
+                if (orient1 != orient2 && orient3 != orient4){
+                    return true;            
+                }                    
+            }
+        }
+    }
+    return false;
+}
+
+
+void DoesRobotCollisionExist(amp::MultiAgentPath2D& path){
+    for(int i = 0; i < path.agent_paths[0].waypoints.size(); i++){
+        for(int j = 0; j < path.numAgents(); j++){
+            for(int k = 0; k < path.numAgents(); k++){
+                if(j != k){
+                    double dist_between_robots = DistanceBetweenNodes(path.agent_paths[j].waypoints[i], path.agent_paths[k].waypoints[i]);
+                    if(dist_between_robots < 1.01){
+                        std::cout << "dist between robots " << j << " and " << k << " is " << dist_between_robots << " at timestep " << i << "\n";
+                        // std::cout << "position of robot " << j << " " << path.agent_paths[j].waypoints[i][0] << " " << path.agent_paths[j].waypoints[i][1] << "\n";
+                        // std::cout << "position of robot " << k <<" " << path.agent_paths[k].waypoints[i][0] << " " << path.agent_paths[k].waypoints[i][1] << "\n";
+                    }
+                }
+            }
+        }
+    }
+}
+
