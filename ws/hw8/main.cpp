@@ -213,10 +213,18 @@ class MyDecentralizedMultiAgentRRT : public DecentralizedMultiAgentRRT {
                     std::vector<Eigen::Vector2d> corners = SquareAgentCorners(next_position, robot_radius); 
                     for(int j = 0; j < corners.size() ; j++){
                         bool corner_collision = PointCollisionCheckMultiAgent(corners[j][0], corners[j][1], problem);
-                        if(corner_collision){
+                        bool edge_collision;
+                        if(j == corners.size() - 1){
+                            edge_collision = NewConnectionCollisionCheck(corners[j], corners[0], problem);
+                        }
+                        else{
+                            edge_collision = NewConnectionCollisionCheck(corners[j], corners[j + 1], problem);
+                        }
+                        if(corner_collision || edge_collision){
                             robot_v_obstacle = true;
                         }
                     }
+                    
 
                     //------------------------ADD A NODE IF WE DONT FIND ANY COLLISIONS----------------------------------------------------------------
                     if(robot_v_obstacle == false){
@@ -488,67 +496,67 @@ int main(int argc, char** argv) {
 
     // ------------------------------------------------------ BOX PLOTS FOR DE-CENTRAL ---------------------------------------------------------
 
-    MyDecentralizedMultiAgentRRT decentralized_rrt_box;
-    decentralized_rrt_box.p_goal = 0.05;
-    decentralized_rrt_box.step_size = 0.3;
-    decentralized_rrt_box.max_iter = 7500;
-    decentralized_rrt_box.epsilon = 0.25;
+    // MyDecentralizedMultiAgentRRT decentralized_rrt_box;
+    // decentralized_rrt_box.p_goal = 0.05;
+    // decentralized_rrt_box.step_size = 0.3;
+    // decentralized_rrt_box.max_iter = 7500;
+    // decentralized_rrt_box.epsilon = 0.25;
     
-    std::vector<std::string> labels = {"time (ms)"};
-    std::string title = "Exercise 2 with 2 robots n = 7500, r = 0.5, p_goal = 0.05, epsilon = 0.25";
-    std::string xlabel = "benchmark categories";
-    std::string ylabel = "benchmark values";
+    // std::vector<std::string> labels = {"time (ms)"};
+    // std::string title = "Exercise 2 with 2 robots n = 7500, r = 0.5, p_goal = 0.05, epsilon = 0.25";
+    // std::string xlabel = "benchmark categories";
+    // std::string ylabel = "benchmark values";
 
-    Profiler profile;
+    // Profiler profile;
 
-    std::vector<double> time_vec = {};
+    // std::vector<double> time_vec = {};
 
-    for(int i = 0; i < 100; i++){
-        Timer time("test");
-        amp::MultiAgentPath2D path = decentralized_rrt_box.plan(ex_1);
-        time.stop();
-        double de_central_rrt_time = profile.getMostRecentProfile("test", TimeUnit::ms);
-        time_vec.push_back(de_central_rrt_time);
+    // for(int i = 0; i < 100; i++){
+    //     Timer time("test");
+    //     amp::MultiAgentPath2D path = decentralized_rrt_box.plan(ex_1);
+    //     time.stop();
+    //     double de_central_rrt_time = profile.getMostRecentProfile("test", TimeUnit::ms);
+    //     time_vec.push_back(de_central_rrt_time);
 
-        // if(i == 99){
-        //     Visualizer de_central_plots;
-        //     de_central_plots.makeFigure(ex_1, path);
-        //     de_central_plots.showFigures();
-        // }
-    }
-    std::list<std::vector<double> > data_sets = {time_vec};
+    //     // if(i == 99){
+    //     //     Visualizer de_central_plots;
+    //     //     de_central_plots.makeFigure(ex_1, path);
+    //     //     de_central_plots.showFigures();
+    //     // }
+    // }
+    // std::list<std::vector<double> > data_sets = {time_vec};
 
-    Visualizer box_plots_central;
-    box_plots_central.makeBoxPlot(data_sets, labels, title, xlabel, ylabel);
-    box_plots_central.showFigures();
+    // Visualizer box_plots_central;
+    // box_plots_central.makeBoxPlot(data_sets, labels, title, xlabel, ylabel);
+    // box_plots_central.showFigures();
     
-    int average_time = 0;
-    for(int i = 0; i < time_vec.size(); i++){
-        average_time = average_time + time_vec[i];   
-    }
+    // int average_time = 0;
+    // for(int i = 0; i < time_vec.size(); i++){
+    //     average_time = average_time + time_vec[i];   
+    // }
 
-    std::cout << "average time is " << average_time/100 << "\n";
+    // std::cout << "average time is " << average_time/100 << "\n";
 
     // --------------------------------------------------------------------- GRADER --------------------------------------------------------------------------------
 
-    // MyCentralizedMultiAgentRRT* central = new MyCentralizedMultiAgentRRT();
-    // central->p_goal = 0.05;
-    // central->step_size = 0.3;
-    // central->max_iter = 7500;
-    // central->epsilon = 0.25;
-    // std::unique_ptr<CentralizedMultiAgentRRT> central_pass;
-    // central_pass.reset(central);
+    MyCentralizedMultiAgentRRT* central = new MyCentralizedMultiAgentRRT();
+    central->p_goal = 0.05;
+    central->step_size = 0.25;
+    central->max_iter = 7500;
+    central->epsilon = 0.25;
+    std::unique_ptr<CentralizedMultiAgentRRT> central_pass;
+    central_pass.reset(central);
 
-    // MyDecentralizedMultiAgentRRT* de_central = new MyDecentralizedMultiAgentRRT();
-    // de_central->p_goal = 0.05;
-    // de_central->step_size = 0.3;
-    // de_central->max_iter = 7500;
-    // de_central->epsilon = 0.25;
-    // std::unique_ptr<DecentralizedMultiAgentRRT> de_central_pass;
-    // de_central_pass.reset(de_central);
+    MyDecentralizedMultiAgentRRT* de_central = new MyDecentralizedMultiAgentRRT();
+    de_central->p_goal = 0.05;
+    de_central->step_size = 0.25;
+    de_central->max_iter = 7500;
+    de_central->epsilon = 0.25;
+    std::unique_ptr<DecentralizedMultiAgentRRT> de_central_pass;
+    de_central_pass.reset(de_central);
     
     
-    // int final_grade = amp::HW8::grade(*central_pass, *de_central_pass, "jomi7243@colorado.edu", argc, argv);
+    int final_grade = amp::HW8::grade(*central_pass, *de_central_pass, "jomi7243@colorado.edu", argc, argv);
 
     return 0;
 }
