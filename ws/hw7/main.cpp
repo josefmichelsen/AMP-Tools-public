@@ -1,206 +1,200 @@
 // This includes all of the necessary header files in the toolbox
 #include "AMPCore.h"
 
-// Include the correct homework header
-#include "hw/HW7.h"
-//#include "hw/HW6.h"
-#include "hw/HW5.h"
-#include "hw/HW2.h"
-
 // Include the header of the shared class
 #include "HelpfulClass.h"
+#include "HelpfulFinal.h"
 
 using namespace amp;
 
-class MyPRM2D : public PRM2D {
-    
+
+class GliderRRT {
     public:
 
-        int n;
-        double r;
+        float step_size;
+        float p_goal;
+        int max_iter;
+        float epsilon;
+        float Length;
+        float Width;
+        float Height;
+        float min_gamma_rate;
+        float min_beta_rate;
+        float gamma_variation;
+        float beta_variation;
+        int opt_iter;
+        int timesteps;
+        bool is_goal_moving;
+        std::string goal_trajectory_file;
 
-        virtual amp::Path2D plan(const amp::Problem2D& problem){
-            amp::Path2D path;
-            
-            int point = 0;
 
-            std::vector<Eigen::Vector2d> point_list = {{problem.q_init}};
-            while(point < n){
-                //std::cout << "here\n";
-                double potential_point_x = amp::RNG::randd(problem.x_min , problem.x_max);
-                double potential_point_y = amp::RNG::randd(problem.y_min , problem.y_max);
+        std::vector<std::vector<float> > plan(std::vector<float> goal, std::vector<float> start_pos, std::vector<std::vector<float> > limits){
 
-                bool node_collision = PointCollisionCheck(potential_point_x, potential_point_y, problem);
-                if(!node_collision){
-                    Eigen::Vector2d point_to_add(potential_point_x, potential_point_y);
-                    point_list.push_back(point_to_add);
+            std::vector<std::vector<float> > goal_vec(timesteps, std::vector<float>(3));
+            if(is_goal_moving){
+                std::ifstream infile;
+                infile.open(goal_trajectory_file);
+                float temp = 0;
+                for(int i = 0; i < timesteps; i++){
+                    for(int j = 0; j < 3; j++){
+                        infile >> temp;
+                        goal_vec[i][j] = temp;
+                    }
+                }
+                infile.close();
+            }
+            else{
+                for(int i = 0; i < timesteps; i++){
+                    goal_vec[i] = goal;
+                }
+            }
+
+            // for(int i = 0; i < goal_vec.size(); i++){
+            //     for(int j = 0; j < goal_vec[i].size(); j++){
+            //         std::cout << goal_vec[i][j] << " ";
+            //     }
+            //     std::cout << "\n";
+            // }
+            // sleep(5);
+
+            std::map<amp::Node, std::vector<float> > node_to_coord;
+            std::map<std::vector<float>, bool> input_set_check;
+            std::shared_ptr<amp::Graph<double> > graph = std::make_shared<amp::Graph<double> >();
+            float initial_v = 1.0;
+            float initial_beta = 90.0;
+            float initial_gamma = 0.0;
+            float initial_timestep = 0.0;
+            std::vector<float> start_vec = {start_pos[0], start_pos[1], start_pos[2], initial_beta, initial_gamma, initial_v, min_beta_rate, min_gamma_rate, initial_timestep, 0.0};
+            node_to_coord[0] = start_vec;
+            input_set_check[start_vec] = true;
+
+            int current_iter = 0;
+            bool reached_end = false;
+
+            while(!reached_end && current_iter < max_iter){
+                //std::cout<< "in the while loop at iteration " << current_iter << "\n"; 
+                std::vector<float> random_point = PotentialPointGlider(p_goal, goal, limits);
+                
+                bool is_point_goal = false;
+                if(random_point[0] == goal[0] && random_point[1] == goal[1] && random_point[2] == goal[2]){
+                    is_point_goal = true;
                 }
 
-                point = point + 1;
-            }
-            point_list.push_back(problem.q_goal);
-            std::shared_ptr<amp::Graph<double> > graph = std::make_shared<amp::Graph<double> >();
-            std::map<amp::Node, Eigen::Vector2d> node_to_coord;
-            for(int i = 0; i < point_list.size(); i++){
-                node_to_coord[i] = point_list[i];
-            }
-            for(int i = 0; i < point_list.size(); i++){
-                for(int j = 0; j < point_list.size(); j++){
-                    if(i != j){
-                        double dist = DistanceBetweenNodes(point_list[i], point_list[j]);
-                        if(dist <= r){
-                            bool link_collision = ConnectionCollisionCheck(point_list[i], point_list[j], problem);
-                            if(!link_collision){
-                                graph.get()->connect(i,j,dist);
+                // ------------------------------ FINDING CLOSEST NODE AND GENERATE POTENTIAL TRAJECTORIES FROM THERE--------------------------------------------------
+                amp::Node closest_node;
+                float beta_rate = min_beta_rate;
+                float gamma_rate = min_gamma_rate;
+                
+                std::vector<std::vector<float> > state_vec(25, std::vector<float>(10, 1));
+                std::vector<std::vector<float> > input_vec(25, std::vector<float>(10, 1));
+                if(graph.get()->nodes().size() == 0){
+                    for(int i = 0; i < opt_iter; i++){
+                        gamma_rate = min_gamma_rate;
+                        for(int j = 0; j < opt_iter; j++){
+                            input_vec[i * opt_iter + j] = {start_pos[0], start_pos[1], start_pos[2], initial_beta, initial_gamma, initial_v, beta_rate, gamma_rate,initial_timestep}; 
+                            std::vector<float> temp_state = IntegrateGlider(start_pos[0], start_pos[1], start_pos[2], initial_beta, initial_gamma, initial_v, beta_rate, gamma_rate, Length, Width, Height, initial_timestep);
+                            for(int k = 0; k < temp_state.size(); k++){
+                                state_vec[i * opt_iter + j][k] = temp_state[k];
+                            }
+                            gamma_rate = gamma_rate + gamma_variation;
+                        }
+                        beta_rate = beta_rate + beta_variation;
+                    }
+                    closest_node = 0;
+                }
+                else{
+                    if(is_goal_moving && is_point_goal){
+                        closest_node = FindClosestNodeGliderMovingGoal(goal_vec, graph, node_to_coord);
+                    }
+                    else{
+                        closest_node = FindClosestNodeGlider(random_point, graph, node_to_coord);
+                    }
+
+                    if(closest_node == std::numeric_limits<uint32_t>::infinity()){
+                        continue;
+                    }
+
+                    for(int i = 0; i < opt_iter; i++){
+                        gamma_rate = min_gamma_rate;
+                        for(int j = 0; j < opt_iter; j++){
+                            input_vec[i * opt_iter + j] = {node_to_coord[closest_node][0], node_to_coord[closest_node][1], node_to_coord[closest_node][2], node_to_coord[closest_node][3], node_to_coord[closest_node][4], node_to_coord[closest_node][5], beta_rate, gamma_rate, node_to_coord[closest_node][8]}; 
+                            if(input_set_check[input_vec[i * opt_iter + j]]){
+                                gamma_rate = gamma_rate + gamma_variation;
+                                continue;
+                            }
+                            std::vector<float> temp_state = IntegrateGlider(node_to_coord[closest_node][0], node_to_coord[closest_node][1], node_to_coord[closest_node][2], node_to_coord[closest_node][3], node_to_coord[closest_node][4], node_to_coord[closest_node][5], beta_rate, gamma_rate, Length, Width, Height, node_to_coord[closest_node][8]);
+                            for(int k = 0; k < temp_state.size(); k++){
+                                state_vec[i * opt_iter + j][k] = temp_state[k];
+                            }
+                            gamma_rate = gamma_rate + gamma_variation;
+                        }
+                        beta_rate = beta_rate + beta_variation;
+                    } 
+                }
+                //------------------------------------------ GO THROUGH ALL POSSIBLE ENDING STATE VECTORS AND PICK THE BEST ONE-------------------------------------
+                //TODO refactor to combine these two loops into one
+                bool any_valid_traj = false;
+                for(int i = 0; i < state_vec.size(); i++){
+                    if(state_vec[i].back() == 0){
+                        any_valid_traj = true;
+                    }
+                }
+                int best_traj = std::numeric_limits<int>::infinity();
+                if(any_valid_traj){
+                    if(is_goal_moving && is_point_goal){
+                        std::vector<float> random_point;
+                        std::vector<float> current_goal_pos = goal_vec[node_to_coord[closest_node][8]];
+                        if(node_to_coord[closest_node][8] >= 1){
+                            std::vector<float> previous_goal_pos = goal_vec[node_to_coord[closest_node][8] - 1];
+                            float dx = current_goal_pos[0] - previous_goal_pos[0];
+                            float dy = current_goal_pos[1] - previous_goal_pos[1];
+                            float dz = current_goal_pos[2] - previous_goal_pos[2];
+
+                            random_point = {current_goal_pos[0] + dx, current_goal_pos[1] + dy, current_goal_pos[2] + dz};
+                        }
+                        else{
+                            random_point = {current_goal_pos[0], current_goal_pos[1], current_goal_pos[2]};
+                        }
+                    }
+
+                    float smallest_dist = std::numeric_limits<float>::infinity();
+                    for(int i = 0; i < state_vec.size(); i++){
+                        if(state_vec[i].back() == 0){
+                            float challenge_dist = DistanceBetweenPointsGlider(state_vec[i][0], state_vec[i][1], state_vec[i][2], random_point);
+                            if(challenge_dist < smallest_dist){
+                                smallest_dist = challenge_dist;
+                                best_traj = i;
                             }
                         }
                     }
                 }
-            }
-
-            NewMyAstar astar_search;
-            ShortestPathProblem path_to_pass;
-            //std::cout << "size of graph I am passing in " << graph.get()->nodes().size() << "\n";
-            //graph.get()->print();
-            path_to_pass.graph = graph;
-            path_to_pass.goal_node = point_list.size() - 1;
-            path_to_pass.init_node = 0;
-            amp::AStar::GraphSearchResult graph_path = astar_search.search(path_to_pass,amp::SearchHeuristic());
-            for(auto i : graph_path.node_path){
-                path.waypoints.push_back(node_to_coord[i]);
-            }
-            //Path smoothing
-            
-            // for(int k = 0; k < 10 ; k++){
-            //     std::vector<Eigen::Vector2d> temp = {{}};
-            //     for(int i = 0; i < path.waypoints.size() - 2; i++){
-            //         bool link_collision_temp = ConnectionCollisionCheck(path.waypoints[i], path.waypoints[i + 2], problem);
-            //         if(!link_collision_temp){
-            //             for(int j = 0; j < path.waypoints.size() - 1; j++){
-            //                 if(j == i + 1){
-            //                     continue;
-            //                 }
-            //                 else{
-            //                     temp.push_back(path.waypoints[j]);
-            //                 }
-            //             }
-            //             for(int p = 0; p < temp.size(); p++){
-            //                 path.waypoints.at(p) = temp.at(p);
-            //             }
-            //             break;
-            //         }
-            //     }
-            // }
-
-            Visualizer test;
-            test.makeFigure(problem, path);
-            test.makeFigure(problem, *graph, node_to_coord);
-            test.showFigures();
-            path.valid = graph_path.success;
-            //graph.reset();
-            return path;
-        }
-
-        // amp::Path2D PathSmoothing(amp::Problem2D& problem, std::shared_ptr<amp::Graph<double> > graph){
-        //     amp::Path2D smooth_path;
-        //     smooth_path.waypoints = {path.waypoints[0]};
-        //     for(int i = 0; i < path.waypoints.size(); i++){
-                
-        //     }
-        //     return smooth_path;
-        // }
-
-};
-
-
-class MyGoalBiasRRT2D : public GoalBiasRRT2D {
-    public:
-        double epsilon;
-        double r;
-        double p;
-        int n;
-
-        virtual amp::Path2D plan(const amp::Problem2D& problem){
-            amp::Path2D path;
-            std::shared_ptr<amp::Graph<double> > graph = std::make_shared<amp::Graph<double> >();
-            std::map<amp::Node, Eigen::Vector2d> node_to_coord;
-            node_to_coord[0] = problem.q_init;
-            bool reached_end = false;
-            bool first_connection = false;
-            int iter = 0;
-            
-            while(!reached_end && iter < n){
-                double potential_point_x, potential_point_y;
-                double prob_of_goal =  amp::RNG::randd(0 ,1);
-                //std::cout << "iter " << iter << "\n";
-                if(prob_of_goal < p){
-                    //std::cout << "goal\n";
-                    potential_point_x = problem.q_goal[0];
-                    potential_point_y = problem.q_goal[1];
+                else{ //CODE HERE FOR SITUATION WHERE ALL TRAJ ARE INVALID
+                    continue;
                 }
-                else{
-                    potential_point_x = amp::RNG::randd(problem.x_min , problem.x_max);
-                    potential_point_y = amp::RNG::randd(problem.y_min , problem.y_max);
-                }
-
-                bool link_collision;
-                double closest_node_dist;
-                amp::Node closest_node;
-                Eigen::Vector2d point_to_add(potential_point_x, potential_point_y);
-                std::vector<amp::Node> current_nodes;
-
-                if(!first_connection){
-                    closest_node_dist = DistanceBetweenNodes(problem.q_init, point_to_add);
+                //------------------------------------------------------- ADD A NODE TO GRAPH ----------------------------------------------------------------
+                amp::Node new_node;
+                if(graph.get()->nodes().size() == 0){
                     closest_node = 0;
-                    if(closest_node_dist > r){
-                        point_to_add[0] = problem.q_init[0] + r * (point_to_add[0] - problem.q_init[0]) / std::abs(point_to_add[0] - problem.q_init[0]);
-                        point_to_add[1] = problem.q_init[1] + r * (point_to_add[1] - problem.q_init[1]) / std::abs(point_to_add[1] - problem.q_init[1]);
-                    }
-                    link_collision = ConnectionCollisionCheck(problem.q_init, point_to_add, problem);
+                    new_node = 1;
                 }
                 else{
-                    current_nodes =  graph.get()->nodes();
-                    closest_node = current_nodes[0];
-                    closest_node_dist = DistanceBetweenNodes(node_to_coord[closest_node], point_to_add);
-                    for(int i = 0; i < current_nodes.size(); i++){
-                        double cur_dist = DistanceBetweenNodes(node_to_coord[current_nodes[i]], point_to_add);
-                        if(cur_dist < closest_node_dist){
-                            closest_node_dist = cur_dist;
-                            closest_node = current_nodes[i];
-                        }
+                    if(is_goal_moving){
+                        goal = goal_vec[node_to_coord[closest_node][8] + 1];
                     }
-
-                    if(closest_node_dist > r){
-                        double x = point_to_add[0] - node_to_coord[closest_node][0];
-                        double y = point_to_add[1] - node_to_coord[closest_node][1];
-                        float theta = std::atan2(y,x);
-                        point_to_add[0] = node_to_coord[closest_node][0] + (std::cos(theta) * r);
-                        point_to_add[1] = node_to_coord[closest_node][1] + (std::sin(theta) * r);
+                    float dist_to_goal = DistanceBetweenPointsGlider(state_vec[best_traj][0], state_vec[best_traj][1], state_vec[best_traj][2], goal);
+                    if(dist_to_goal < epsilon){
+                        reached_end = true;
                     }
-                    link_collision = ConnectionCollisionCheck(node_to_coord[closest_node], point_to_add, problem);
+                    new_node = graph.get()->nodes().size();
                 }
-                bool node_collision = PointCollisionCheck(point_to_add[0], point_to_add[1], problem);
-
-                if(!node_collision){
-                    if(!link_collision){
-                        first_connection = true;
-                        amp::Node new_node = current_nodes.size();
-                        node_to_coord.insert({new_node, point_to_add});
-                        graph.get()->connect(closest_node, new_node, closest_node_dist);
-                        double dist_to_goal = DistanceBetweenNodes(point_to_add, problem.q_goal);
-                        if(dist_to_goal <= epsilon){
-                            reached_end = true;
-                            amp::Node goal_node = current_nodes.size();
-                            node_to_coord.insert({goal_node, point_to_add});;
-                            graph.get()->connect(new_node, goal_node, dist_to_goal);
-                        }
-                        iter = iter + 1;
-                    }
-                    
-                }
+                graph.get()->connect(closest_node, new_node, step_size); // HAVE THE ABILITY TO REPLACE STEP SIZE WITH SOME SORT OF DISTANCE METRIC IF NEEDED IN THE FUTURE
+                node_to_coord[new_node] = state_vec[best_traj]; 
+                input_set_check[input_vec[best_traj]] = true;                
                 
+                current_iter = current_iter + 1;
             }
-
+            //----------------------------------------------------------- IF WE FOUND WERE ABLE TO GET TO THE GOAL DO A* TO FIND PATH -------------------------------------
+            std::vector<std::vector<float> > path;
             if(reached_end){
                 NewMyAstar astar_search;
                 ShortestPathProblem path_to_pass;
@@ -208,18 +202,35 @@ class MyGoalBiasRRT2D : public GoalBiasRRT2D {
                 path_to_pass.goal_node = node_to_coord.size() - 1;
                 path_to_pass.init_node = 0;
                 amp::AStar::GraphSearchResult graph_path = astar_search.search(path_to_pass,amp::SearchHeuristic());
+                // std::ofstream file_for_path;
+                // file_for_path.open("/home/josef/asen_5254_algorithmic_motion_planning/AMP-Tools-public/path.txt");
                 for(auto i : graph_path.node_path){
-                    path.waypoints.push_back(node_to_coord[i]);
+                    path.push_back({node_to_coord[i][0], node_to_coord[i][1], node_to_coord[i][2], node_to_coord[i][8]});
+                    // for(int j = 0; j < node_to_coord[i].size(); j++){
+                    //     file_for_path << node_to_coord[i][j] << " ";
+                    // }
+                    // file_for_path << "\n";
                 }
-                // Visualizer test;
-                // test.makeFigure(problem, path);
-                // test.makeFigure(problem, *graph, node_to_coord);
-                // test.showFigures();
-                path.valid = true;
+                // file_for_path.close();
             }
-            else{
-                path.valid = false;
-            }
+            //---------------------------------------------------------- OUTPUT ALL NODES FROM TREE TO TEXT FILE ---------------------------------------------------------------------------
+            // std::ofstream file_for_all_points;
+            // file_for_all_points.open("/home/josef/asen_5254_algorithmic_motion_planning/AMP-Tools-public/all_nodes.txt");
+            // for(int i = 0; i < node_to_coord.size(); i++){
+            //     for(int j = 0; j < 3; j++){
+            //         file_for_all_points << node_to_coord[i][j] << " ";
+            //     }
+            //     file_for_all_points << "\n";
+            // }
+            // file_for_all_points.close();
+
+            float number_nodes_in_tree = graph.get()->nodes().size();
+            float number_nodes_in_path = path.size();
+            float was_a_path_found = (float)reached_end;
+            float place_hold = 0.0;
+            std::vector<float> important_info = {number_nodes_in_tree, number_nodes_in_path, was_a_path_found, place_hold};
+            path.push_back(important_info);
+            path.push_back({0.0, 0.0, 0.0, 0.0});
 
             return path;
         }
@@ -228,105 +239,56 @@ class MyGoalBiasRRT2D : public GoalBiasRRT2D {
 
 int main(int argc, char** argv) {    
 
-    amp::Problem2D hw5_environment = amp::HW5::getWorkspace1();
-    hw5_environment.x_min = -1;
-    hw5_environment.x_max = 11;
-    hw5_environment.y_min = -3;
-    hw5_environment.y_max = 3;
+    GliderRRT glider;
+    glider.epsilon = 1.0;
+    glider.max_iter = 4000;
+    glider.p_goal = 0.1;
+    glider.step_size = 1;
+    glider.min_beta_rate = -20.0;
+    glider.min_gamma_rate = -20.0;
+    glider.beta_variation = 20.0;
+    glider.gamma_variation = 20.0;
+    glider.opt_iter = 3;
+    //glider.goal_trajectory_file = "/mnt/c/Users/Josef\ Michelsen/Documents/ASEN_5254_Algorithmic_Motion_Planning/Final/straight_goal.txt";
+    glider.goal_trajectory_file = "/mnt/c/Users/Josef\ Michelsen/Documents/ASEN_5254_Algorithmic_Motion_Planning/Final/random_goal.txt";
+    glider.timesteps = 100;
+    glider.is_goal_moving = true;
 
-    amp::Problem2D hw2_w1 = amp::HW2::getWorkspace1();
-    amp::Problem2D hw2_w2 = amp::HW2::getWorkspace2();
-
-    //hw5_environment.obstacles[1].
-
-    // int n = 200;
-    // double r = 1.0;
-
-    MyPRM2D prm;
-    MyGoalBiasRRT2D rrt;
+    std::vector<float> goal = {-15, 70, 10};
+    std::vector<float> start_position = {0, 0, 20};
+    std::vector<std::vector<float> > limits = {{-20, 20}, {0, 90}, {0, 30}};
+    
     Profiler profile;
-    
-    std::vector<std::string> labels = {"time (ms)", "length", "success"};
-    std::string title = "Exercise 2 part b HW02 Workspace 2 n = 5000, r = 0.5, p_goal = 0.05, epsilon = 0.25";
-    std::string xlabel = "benchmark categories";
-    std::string ylabel = "benchmark values";
+    std::vector<std::vector<float> > total_info;
+    std::vector<float> time_vec;
 
-    std::vector<double> time_vec = {};
-    std::vector<double> length_vec = {};
-    std::vector<double> success_vec = {};
-
-    prm.n = 200;
-    prm.r = 1.5;
-
-    rrt.n = 5000;
-    rrt.r = 0.5;
-    rrt.p = 0.05;
-    rrt.epsilon = 0.25;
-
-    // amp::Path2D path = rrt.plan(hw2_w2);
-    // std::cout << "path length " << path.length() << "\n";
-    
-
-    // amp::Path2D path = prm.plan(hw2_w2);
-    // std::cout << "path length " << path.length() << "\n";
+    //std::vector<std::vector<float> > important_info = glider.plan(goal, start_position, limits);
 
 
-    for(int i = 0; i < 100; i++){
-        //std::cout << "we are in loop " << i << "\n";
-
-        Timer time("test");
-        amp::Path2D path = prm.plan(hw5_environment);
+    // ------------------------------------------------- CODE FOR MONTE CARLO ------------------------------------------------------------------
+    for(int i = 0; i < 20; i++){
+        std::cout << "on MC run " << i << "\n";
+        Timer time("glider");
+        std::vector<std::vector<float> > important_info = glider.plan(goal, start_position, limits);
+        
         time.stop();
-        double prm_time = profile.getMostRecentProfile("test", TimeUnit::ms);
-        time_vec.push_back(prm_time);
-        if(path.valid){
-            length_vec.push_back(path.length());
+        float glider_time = profile.getMostRecentProfile("glider", TimeUnit::s);
+        time_vec.push_back(glider_time);
+        for(int j = 0; j < important_info.size(); j++){
+            total_info.push_back(important_info[j]);
         }
-        else{
-            length_vec.push_back(0.0);
-        }
-        success_vec.push_back(path.valid);
     }
 
-    // for(int i = 0; i < 1000; i++){
-    //     //std::cout << "we are in loop " << i << "\n";
-
-    //     Timer time("test");
-    //     amp::Path2D path = rrt.plan(hw2_w2);
-    //     time.stop();
-    //     double prm_time = profile.getMostRecentProfile("test", TimeUnit::ms);
-    //     time_vec.push_back(prm_time);
-    //     if(path.valid){
-    //         length_vec.push_back(path.length());
-    //     }
-    //     else{
-    //         length_vec.push_back(0.0);
-    //     }
-    //     success_vec.push_back(path.valid);
-    // }
-
-
-    std::list<std::vector<double> > data_sets = {time_vec, length_vec, success_vec};
-    //std::cout << "geting to vis \n";
-    Visualizer box;
-    box.makeBoxPlot(data_sets, labels, title, xlabel, ylabel);
-    box.showFigures();
-
-    // MyPRM2D* Myprm_algo = new MyPRM2D();
-    // Myprm_algo->n = 1000;
-    // Myprm_algo->r = 2.0;
-    // std::unique_ptr<PRM2D> prm_algo;
-    // prm_algo.reset(Myprm_algo);
-
-    // MyGoalBiasRRT2D* Myrrt_algo = new MyGoalBiasRRT2D();
-    // Myrrt_algo->epsilon = 0.25;
-    // Myrrt_algo->n = 2000;
-    // Myrrt_algo->r = 1.0;
-    // Myrrt_algo->p = 0.05;
-    // std::unique_ptr<GoalBiasRRT2D> rrt_algo;
-    // rrt_algo.reset(Myrrt_algo);
-
-    // int mygrade = amp::HW7::grade(*prm_algo, *rrt_algo, "jomi7243@colorado.edu", argc, argv);
+    std::ofstream monte_carlo;
+    monte_carlo.open("/home/josef/asen_5254_algorithmic_motion_planning/AMP-Tools-public/monte_carlo.txt");
+    for(int i = 0; i < total_info.size(); i++){
+        for(int j = 0; j < total_info[i].size(); j++){
+            monte_carlo << total_info[i][j] << " ";
+        }
+        monte_carlo << time_vec[i];
+        monte_carlo << "\n";
+    }
+    monte_carlo.close();
 
     return 0;
 }

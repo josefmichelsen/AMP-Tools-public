@@ -556,7 +556,7 @@ int main(int argc, char** argv) {
     de_central_pass.reset(de_central);
     
     
-    int final_grade = amp::HW8::grade(*central_pass, *de_central_pass, "jomi7243@colorado.edu", argc, argv);
+    //int final_grade = amp::HW8::grade(*central_pass, *de_central_pass, "jomi7243@colorado.edu", argc, argv);
 
     return 0;
 }
